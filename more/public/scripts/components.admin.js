@@ -1,0 +1,526 @@
+const background = makeElement('img',{
+	src:'/file?fn=goodbackground.jpg',
+	style:`
+		width:100%;
+		height:100%;
+		object-fit:cover;
+		position:relative;
+	`,
+});
+
+const content = makeElement('content',{
+	storageref:firebase.storage().ref(),
+	productsref:firebase.database().ref('products'),
+	newProductsRef(string){
+		return firebase.database().ref(`products/${string}`);
+	},
+	style:`
+		width:60%;
+		position:absolute;
+		height:70%;
+		display:flex;
+		flex-direction:column;
+	`,
+	innerHTML:`
+		<div>
+			<div
+			style="
+				background:white;
+				padding:20px;
+				display:flex;
+				align-items:center;
+			"
+			>	
+				<img src=file?fn=capybara.png
+				style="
+					width:32px;
+					height:32px;
+					margin-right:10px;
+				">
+				<span>Mas & Bro Admin</span>
+			</div>
+		</div>
+		<div id=body
+		style="
+			display:flex;
+			height:100%;
+			width:100%;
+		"
+		></div>
+	`,
+	onadded(){
+		const body = this.find('#body');
+		body.addChild(leftSide);
+		body.addChild(centerSide);
+		body.addChild(rightSide);
+	}
+})
+
+
+const leftSide = makeElement('div',{
+	style:`
+		width:10%;
+		background:#ececec;
+		display:flex;
+		justify-content:flex-start;
+		align-items:center;
+		padding:10px;
+		flex-direction:column;
+	`,
+	innerHTML:`
+		<div class=button id=pending
+		style="
+			padding:10px;
+			background:white;
+			display:flex;
+			align-items:center;
+			justify-content:center;
+			margin-bottom:10px;
+			flex-direction:column;
+			width:80%;
+			cursor:pointer;
+		"
+		>
+			<img src=/file?fn=giftbox.png
+			style="
+				width:24px;
+				height:24px;
+				margin-bottom:5px;
+			"
+			>
+			<div>Pending</div>
+		</div>
+		<div class=button id=done
+		style="
+			padding:10px;
+			background:white;
+			display:flex;
+			align-items:center;
+			justify-content:center;
+			margin-bottom:10px;
+			flex-direction:column;
+			width:80%;
+			cursor:pointer;
+		"
+		>
+			<img src=/file?fn=received.png
+			style="
+				width:24px;
+				height:24px;
+			"
+			>
+			Done
+		</div>
+	`,
+	onadded(){
+		const map = {
+			pending(){
+				loadData(0);
+			},
+			done(){
+				loadData(1);
+			}
+		};
+		this.findall('.button').forEach(button=>{
+			button.onclick = ()=>{
+				map[button.id]();
+			}
+		})
+	}
+});
+const centerSide = makeElement('div',{
+	style:`
+		width:40%;
+		background:white;
+		padding:20px;
+		overflow:auto;
+	`,
+	onadded(){
+		loadData();
+	}
+});
+
+const rightSide = makeElement('div',{
+	style:`
+		width:50%;
+		background:#ececec;
+		padding:20px;
+	`,
+	innerHTML:`
+		<div id=loading
+		style="
+			height:100%;
+			display:flex;
+			align-items:center;
+			justify-content:center;
+			flex-direction:column;
+		"
+		>
+			Belum Ada Data!
+		</div>
+	`,
+	onadded(){
+	}
+});
+
+const datanull = function(){
+	centerSide.find('#loading').setHTML(`
+		Belum Ada Data!
+	`)
+}
+
+const processData = function(d,target=1){
+	centerSide.find('#loading').remove();
+	centerSide.addChild(makeElement('div',{
+		innerHTML:`${target?'Done':'Pending'}`,
+		style:`
+			margin-bottom:10px;
+			position:sticky;
+			top:0;
+			background:white;
+		`
+	}))
+	let putted = 0;
+	const data = [];
+	Object.keys(d).forEach(key=>{
+		data.push(Object.assign(d[key],{key}));
+	});
+	data.sort(function(a,b){return a.secons - b.secons});
+	data.forEach(data=>{
+		if(data.status===target){
+			putted++;
+			centerSide.addChild(makeElement('div',{
+				data,
+				style:`
+					display:flex;
+					justify-content:center;
+					padding:5px;
+					flex-direction:column;
+					background:#ececec;
+					cursor:pointer;
+					margin-bottom:6px;
+				`,
+				innerHTML:`
+					<div>
+						<span
+						style="
+							font-size:12px;
+						"
+						>Deadline: ${data.date}</span>
+					</div>
+					<div>
+						<span>Nama: ${data.name}</span>
+					</div>
+					<div>
+						<span>Catatan: ${data.notes.slice(0,20)}...</span>
+					</div>
+				`,
+				onclick(){
+					content.clickedDiv = this;
+					this.processPreview();
+				},
+				processPreview(){
+					rightSide.clear();
+					rightSide.addChild(makeElement('div',{
+						style:`
+							background:white;
+							padding:10px;
+							font-size:14px;
+						`,
+						innerHTML:`
+							<div
+							style="
+								display:flex;
+								justify-content:space-between;
+								margin-bottom:10px;
+								align-items:center;
+							"
+							>
+								<div
+								style="
+									width:50%;
+								"
+								>
+									<span>Nama</span>
+								</div>
+								<div
+								style="
+									width:50%;
+									text-align:right;
+								">
+									<span>${this.data.name}</span>
+								</div>
+							</div>
+							<div
+							style="
+								display:flex;
+								justify-content:space-between;
+								margin-bottom:10px;
+								align-items:center;
+							">
+								<div
+								style="
+									width:50%;
+								">
+									<span>Deadline</span>
+								</div>
+								<div
+								style="
+									width:50%;
+									text-align:right;
+								">
+									<span>${this.data.time+'/'+this.data.date}</span>
+								</div>
+							</div>
+							<div
+							style="
+								display:flex;
+								justify-content:space-between;
+								margin-bottom:10px;
+								align-items:center;
+							">
+								<div
+								style="
+									width:50%;
+								">
+									<span>Catatan</span>
+								</div>
+								<div
+								style="
+									width:50%;
+									text-align:right;
+								">
+									<span>${this.data.notes}</span>
+								</div>
+							</div>
+							<div
+							style="
+								display:flex;
+								justify-content:space-between;
+								margin-bottom:10px;
+								align-items:center;
+							">
+								<div
+								style="
+									width:50%;
+								">
+									<span>WA</span>
+								</div>
+								<div
+								style="
+									width:50%;
+									text-align:right;
+								">
+									<span>${this.data.whoarei}</span>
+								</div>
+							</div>
+							<div
+							style="
+								display:flex;
+								justify-content:space-between;
+								margin-bottom:10px;
+								align-items:center;
+							">
+								<div
+								style="
+									width:50%;
+								">
+									<span>Files(${this.data.fileSrc.length})</span>
+								</div>
+								<div
+								style="
+									width:50%;
+									display:flex;
+									justify-content:flex-start;
+									scrollbar-width:thin;
+									overflow:auto;
+								"
+								id=files
+								>
+								</div>
+							</div>
+							<div
+							style="
+								display:flex;
+								justify-content:space-between;
+								margin-bottom:10px;
+								align-items:center;
+							">
+								<div
+								style="
+									width:50%;
+								">
+									<span>Harga Tagihan</span>
+								</div>
+								<div
+								style="
+									width:50%;
+									text-align:right;
+								">
+									<input type=number id=cost placeholder="Example: 30.000"
+									style="
+										pading:10px;
+										background:#ececec;
+									"
+									value=${!target?'':this.data.cost}
+									>
+								</div>
+							</div>
+							<div
+							style="
+								margin-top:20px;
+								padding:10px;
+								display:${target?'none':'block'};
+							"
+							>
+								<div
+								style="
+									text-align:center;
+								"
+								id=finishbutton
+								>
+									<span
+									style="
+										padding:10px;
+										background:yellow;
+										cursor:pointer;
+									"
+									>Selesai</span>
+								</div>
+							</div>
+							<div
+							style="
+								margin-top:20px;
+								padding:10px;
+								display:${target?'block':'none'};
+							"
+							>
+								<div
+								style="
+									text-align:center;
+								"
+								id=deletebutton
+								>
+									<span
+									style="
+										padding:10px;
+										background:yellow;
+										cursor:pointer;
+									"
+									>Hapus</span>
+								</div>
+							</div>
+						`
+					}))
+					this.displayFiles();
+					rightSide.find('#finishbutton').onclick = ()=>{
+						const cost = rightSide.find('#cost').value||0;
+						//time to update db.
+						console.log(this.data);
+						content.newProductsRef(this.data.key).update({cost,status:1}).then(()=>{
+							content.clickedDiv.remove();
+							rightSide.setHTML(`
+								<div id=loading
+								style="
+									height:100%;
+									display:flex;
+									align-items:center;
+									justify-content:center;
+									flex-direction:column;
+								"
+								>
+									Berhasil Menyimpan Perubahan!
+								</div>
+							`)
+							loadData(0);
+						})
+					}
+					rightSide.find('#deletebutton').onclick = ()=>{
+						content.newProductsRef(this.data.key).remove().then(()=>{
+							content.clickedDiv.remove();
+							rightSide.setHTML(`
+								<div id=loading
+								style="
+									height:100%;
+									display:flex;
+									align-items:center;
+									justify-content:center;
+									flex-direction:column;
+								"
+								>
+									Berhasil Menyimpan Perubahan!
+								</div>
+							`)
+							loadData(1);
+						})
+					}
+				},
+				displayFiles(){
+					this.data.fileSrc.forEach(src=>{
+						rightSide.find('#files').addChild(makeElement('img',{
+							src:'/file?fn=download.png',
+							style:`
+								width:24px;
+								height:24px;
+								margin-right:5px;
+								cursor:pointer;
+								margin-bottom:5px;
+							`,
+							onclick(){
+								cOn.get({url:src});
+								this.src = '/file?fn=check-mark.png';
+							}
+						}));
+					})
+				}
+		}))
+		}
+	})
+	if(putted===0){
+		centerSide.addChild(makeElement('div',{
+			innerHTML:`Tidak Ada Data!`,
+			style:`
+				margin-bottom:10px;
+				position:sticky;
+				top:0;
+				background:white;
+			`
+		}))
+	}
+}
+
+const loadData = function(target=0){
+	centerSide.clear();
+	centerSide.addChild(makeElement('div',{
+		id:'loading',
+		style:`
+			height:100%;
+			display:flex;
+			align-items:center;
+			justify-content:center;
+			flex-direction:column;
+		`,
+		innerHTML:`
+			<div>
+				<span>Memuat Info!</span>
+			</div>
+			<div>
+				<img src=/file?fn=loadingScreen.gif
+				style="
+					width:100px;
+					height:100px;
+					object-fit:cover;
+				"
+				>
+			</div>
+		`
+	}))
+	content.productsref.get().then(data=>{
+		data = data.val();
+		if(!data){
+			datanull()
+		}else{
+			processData(data,target);
+		}
+	})
+}
